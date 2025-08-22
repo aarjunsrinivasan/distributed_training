@@ -4,6 +4,21 @@ import time
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
+from inspect import isfunction
+
+class DisableDistributed:
+    """Context manager that temporarily disables distributed functions (replaces with no-ops)"""
+    def __enter__(self):
+        self.old_functions = {}
+        for name in dir(dist):
+            value = getattr(dist, name, None)
+            if isfunction(value):
+                self.old_functions[name] = value
+                setattr(dist, name, lambda *args, **kwargs: None)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for name in self.old_functions:
+            setattr(dist, name, self.old_functions[name])
 
 def render_duration(duration):
     return f"{duration:.6f} seconds"
@@ -26,8 +41,15 @@ def get_device(rank):
         return torch.device('cpu')
 
 def spawn(func, world_size, *args, **kwargs):
-    spawn_args = (world_size,) + args + tuple(kwargs.values())
-    mp.spawn(func, args=spawn_args, nprocs=world_size, join=True)
+    # Note: assume kwargs are in the same order as what main needs
+    if sys.gettrace():
+        # If we're being traced, run the function directly, since we can't trace through mp.spawn
+        with DisableDistributed():
+            spawn_args = (0, world_size,) + args + tuple(kwargs.values())
+            func(*spawn_args)
+    else:
+        spawn_args = (world_size,) + args + tuple(kwargs.values())
+        mp.spawn(func, args=spawn_args, nprocs=world_size, join=True)
 
 def all_reduce(rank: int, world_size: int, num_elements: int):
     setup(rank, world_size)
@@ -97,9 +119,9 @@ def reduce_scatter(rank: int, world_size: int, num_elements: int):
     cleanup()
 
 if __name__ == '__main__':
-    world_size = 2  # Change to number of processes/GPUs
-    num_elements = 1024 * 1024  # 1M elements (~4MB tensor)
 
+    world_size=2  # Set to number of GPUs (max vailable)
+    num_elements=100*1024*1024
     print("Running all_reduce benchmark...")
     spawn(all_reduce, world_size, num_elements=num_elements)
 
