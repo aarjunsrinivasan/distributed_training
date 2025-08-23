@@ -41,7 +41,7 @@ class ToyModel(nn.Module):
 
 
 # Training loop
-def run(rank: int, world_size: int, steps: int = 20, batch_size: int = 32, backend: str = "nccl"):
+def run(rank: int, world_size: int, steps: int = 20, batch_size: int = 32, flat: bool = False, backend: str = "nccl"):
     print(f"Running DDP with rank {rank} and world size {world_size} and backend {backend}")
 
     device = setup_ddp(rank, world_size, backend)
@@ -85,11 +85,23 @@ def run(rank: int, world_size: int, steps: int = 20, batch_size: int = 32, backe
         loss = loss_fn(logits, y)
         loss.backward()
 
-        # Naive gradient averaging: one all‑reduce per parameter
-        for p in model.parameters():
-            if p.grad is not None:
-                dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
-                p.grad.mul_(1.0 / world_size)
+        if flat:
+                params_with_grads = [p for p in model.parameters() if p.grad is not None]
+                if not params_with_grads:
+                    continue
+                grads = [p.grad for p in params_with_grads]
+                flattened_grads = torch._utils._flatten_dense_tensors(grads)
+                dist.all_reduce(flattened_grads, op=dist.ReduceOp.SUM)
+                flattened_grads.mul_(1.0 / world_size)
+                updated_grads = torch._utils._unflatten_dense_tensors(flattened_grads, grads)
+                for p, updated_grad in zip(params_with_grads, updated_grads):
+                    p.grad = updated_grad
+        else:
+            # Naive gradient averaging: one all‑reduce per parameter
+            for p in model.parameters():
+                if p.grad is not None:
+                    dist.all_reduce(p.grad, op=dist.ReduceOp.SUM)
+                    p.grad.mul_(1.0 / world_size)
 
         optim.step()
 
