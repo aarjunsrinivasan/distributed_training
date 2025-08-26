@@ -125,5 +125,5 @@ if __name__ == '__main__':
     print("Running all_reduce benchmark...")
     spawn(all_reduce, world_size, num_elements=num_elements)
 
-    print("Running reduce_scatter benchmark...")
-    spawn(reduce_scatter, world_size, num_elements=num_elements)
+    # print("Running reduce_scatter benchmark...")
+    # spawn(reduce_scatter, world_size, num_elements=num_elements)
