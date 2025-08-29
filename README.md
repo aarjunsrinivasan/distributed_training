@@ -35,25 +35,7 @@ python test_all_ddp.py --mode test
 python test_all_ddp.py --mode benchmark
 ```
 
-## Command Line Options
 
-### test_minimal_ddp.py Options
-
-- `--ddp-type`: Choose DDP implementation (`naive`, `overlap`, `overlap_bucket`)
-- `--world-size`: Number of processes (default: 2)
-- `--steps`: Number of training steps (default: 20)
-- `--batch-size`: Total batch size (default: 32)
-- `--backend`: Distributed backend (`nccl` for GPU, `gloo` for CPU)
-
-### test_all_ddp.py Options
-
-- `--mode`: Test mode (`test` for basic testing, `benchmark` for performance comparison)
-- `--world-size`: Number of processes (default: 2)
-- `--steps`: Number of training steps (default: 10 for test, 50 for benchmark)
-- `--batch-size`: Total batch size (default: 32 for test, 64 for benchmark)
-- `--backend`: Distributed backend (default: `gloo`)
-- `--runs`: Number of runs for benchmarking (default: 3)
-- `--ddp-type`: Test only specific implementation
 
 ## Examples
 
@@ -90,56 +72,6 @@ python test_all_ddp.py --ddp-type naive
 python test_all_ddp.py --ddp-type overlap --world-size 3 --steps 30
 ```
 
-## Expected Output
-
-### Single Implementation Test
-
-```
-Testing NAIVE DDP implementation
-World size: 2, Steps: 20, Batch size: 32, Backend: gloo
-Running NAIVE DDP with rank 0 and world size 2 and backend gloo
-Rank 0: Using NaiveDDP implementation
-Running NAIVE DDP with rank 1 and world size 2 and backend gloo
-Rank 1: Using NaiveDDP implementation
-...
-Rank 0: Verification successful! NAIVE DDP parameters match baseline.
-```
-
-### All Implementations Test
-
-```
-Testing all DDP implementations
-World size: 2, Steps: 10, Batch size: 32, Backend: gloo
-
-============================================================
-Testing NAIVE DDP Implementation
-============================================================
-✅ NAIVE DDP test PASSED
-⏱️  Execution time: 2.34 seconds
-
-============================================================
-Testing OVERLAP DDP Implementation
-============================================================
-✅ OVERLAP DDP test PASSED
-⏱️  Execution time: 1.87 seconds
-
-============================================================
-Testing OVERLAP_BUCKET DDP Implementation
-============================================================
-✅ OVERLAP_BUCKET DDP test PASSED
-⏱️  Execution time: 1.92 seconds
-
-============================================================
-TEST SUMMARY
-============================================================
-NAIVE          | ✅ PASS   |    2.34s
-OVERLAP        | ✅ PASS   |    1.87s
-OVERLAP_BUCKET | ✅ PASS   |    1.92s
-============================================================
-🎉 All DDP implementations passed!
-```
-
-## Troubleshooting
 
 ### Common Issues
 
@@ -163,34 +95,6 @@ OVERLAP_BUCKET | ✅ PASS   |    1.92s
    python test_minimal_ddp.py --batch-size 31 --world-size 2
    ```
 
-### Debug Mode
-
-For more verbose output, you can modify the test files to add more print statements or use Python's debugger:
-
-```bash
-python -m pdb test_minimal_ddp.py --ddp-type naive
-```
-
-## Implementation Details
-
-### NaiveDDP
-- Performs all-reduce on each parameter gradient individually
-- Simple but potentially slower due to many small communications
-
-### DDPOverlap
-- Overlaps gradient computation with communication
-- Uses asynchronous gradient synchronization
-
-### DDPOverlapBucket
-- Groups parameters into buckets for more efficient communication
-- Reduces the number of all-reduce operations
-
-## Performance Considerations
-
-- **CPU vs GPU**: Use `gloo` backend for CPU, `nccl` for GPU
-- **World size**: Larger world sizes may show more performance differences
-- **Batch size**: Larger batches may better demonstrate communication overhead
-- **Steps**: More steps provide more stable performance measurements
 
 ## Adding New Implementations
 
