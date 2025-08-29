@@ -35,6 +35,9 @@ python test_all_ddp.py --mode test
 python test_all_ddp.py --mode benchmark
 ```
 
+### Benchmarking DDP
+
+The tranformer implementation is taken from CS336 course for benchmarking the minimal DDP implementations
 
 
 ## Examples
